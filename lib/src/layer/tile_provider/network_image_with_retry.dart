@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:http/http.dart';
 import 'package:http/retry.dart';
+import 'package:flutter/services.dart';
 
 class NetworkImageWithRetry extends ImageProvider<NetworkImageWithRetry> {
   /// The URL from which the image will be fetched.
@@ -16,7 +17,7 @@ class NetworkImageWithRetry extends ImageProvider<NetworkImageWithRetry> {
   NetworkImageWithRetry(this.url, {this.scale = 1.0});
 
   @override
-  ImageStreamCompleter load(NetworkImageWithRetry key, decode) {
+  ImageStreamCompleter loadImage(NetworkImageWithRetry key, decode) {
     return OneFrameImageStreamCompleter(_loadWithRetry(key, decode),
         informationCollector: () sync* {
       yield ErrorDescription('Image provider: $this');
@@ -30,12 +31,12 @@ class NetworkImageWithRetry extends ImageProvider<NetworkImageWithRetry> {
   }
 
   Future<ImageInfo> _loadWithRetry(
-      NetworkImageWithRetry key, DecoderCallback decode) async {
+      NetworkImageWithRetry key, ImageDecoderCallback decode) async {
     assert(key == this);
 
     final uri = Uri.parse(url);
     final response = await retryClient.get(uri);
-    final codec = await decode(response.bodyBytes);
+    final codec = await decode(await ImmutableBuffer.fromUint8List(response.bodyBytes));
     final image = (await codec.getNextFrame()).image;
 
     return ImageInfo(
